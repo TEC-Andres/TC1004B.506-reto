@@ -1,0 +1,39 @@
+name: Firmware Build
+
+on:
+  push:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yaml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yaml"
+
+concurrency:
+  group: firmware-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: platformio/platformio-core:latest
+    defaults:
+      run:
+        working-directory: firmware
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            /root/.platformio
+            firmware/.pio
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+          restore-keys: |
+            pio-
+
+      - name: Build
+        run: pio run -e nodemcuv2
