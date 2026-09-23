@@ -17,12 +17,17 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Cache PlatformIO packages
+      - name: Cache PlatformIO
         uses: actions/cache@v4
         with:
           path: |
@@ -32,21 +37,8 @@ jobs:
           restore-keys: |
             pio-
 
-      - name: Build image
-        uses: docker/build-push-action@v6
-        with:
-          context: firmware
-          file: firmware/Dockerfile
-          load: true
-          tags: reto-firmware:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Install PlatformIO
+        run: pip install platformio==6.1.19
 
-      - name: Build firmware
-        run: |
-          docker run --rm \
-            -v "$PWD/firmware:/project" \
-            -v "$HOME/.platformio:/root/.platformio" \
-            -w /project \
-            reto-firmware:latest \
-            pio run -e nodemcuv2
+      - name: Build
+        run: pio run -e nodemcuv2
