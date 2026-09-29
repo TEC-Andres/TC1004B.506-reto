@@ -1,0 +1,3 @@
+[submodule "docs"]
+	path = docs
+	url = https://github.com/TEC-Andres/TC1004B.506-docs
