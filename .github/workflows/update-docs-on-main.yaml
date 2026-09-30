@@ -93,11 +93,11 @@ jobs:
             sleep 5
           done
 
+          if gh pr merge "$BRANCH" --squash --admin --delete-branch; then
+            exit 0
+          fi
+          echo "::warning::admin merge failed, trying auto-merge"
           if gh pr merge "$BRANCH" --squash --auto --delete-branch; then
             exit 0
           fi
-          echo "::warning::auto-merge unavailable, merging directly"
-          if gh pr merge "$BRANCH" --squash --delete-branch; then
-            exit 0
-          fi
-          echo "::warning::merge blocked (branch protection or pending checks); PR is open for manual merge"
+          echo "::warning::merge blocked (ruleset or pending checks); PR is open for manual merge"
