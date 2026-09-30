@@ -35,7 +35,7 @@ jobs:
           echo "Upstream: $url @ $branch"
           git submodule sync -- docs
           git submodule update --init --remote -- docs
-          echo "sha=$(git rev-parse HEAD:docs)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git -C docs rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
