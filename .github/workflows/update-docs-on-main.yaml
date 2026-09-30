@@ -1,0 +1,103 @@
+name: Update docs submodule
+
+on:
+  repository_dispatch:
+    types: [docs-updated]
+  workflow_dispatch:
+
+concurrency:
+  group: update-docs-submodule
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  BRANCH: automation/update-docs-submodule
+
+jobs:
+  bump-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.DOCS_BOT_PAT || github.token }}
+
+      - name: Fetch latest docs main
+        id: docs
+        run: |
+          set -euo pipefail
+          url="$(git config -f .gitmodules submodule.docs.url)"
+          branch="$(git config -f .gitmodules submodule.docs.branch || true)"
+          branch="${branch:-main}"
+          echo "Upstream: $url @ $branch"
+          git submodule sync -- docs
+          git submodule update --init --remote -- docs
+          echo "sha=$(git rev-parse HEAD:docs)" >> "$GITHUB_OUTPUT"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Stage submodule bump
+        id: bump
+        run: |
+          set -euo pipefail
+          git add docs
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "docs is already at the latest upstream commit"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "old=$(git rev-parse HEAD:docs)" >> "$GITHUB_OUTPUT"
+          echo "new=${{ steps.docs.outputs.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Open and merge pull request
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_BOT_PAT || github.token }}
+          OLD: ${{ steps.bump.outputs.old }}
+          NEW: ${{ steps.bump.outputs.new }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "$BRANCH"
+          git add docs
+          git commit -m "chore(docs): bump submodule to ${NEW:0:7}"
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+
+          cat > /tmp/pr-body.md <<EOF
+          Automated bump of the \`docs\` submodule from \`${OLD:0:7}\` to \`${NEW:0:7}\`.
+
+          - Upstream: \`${{ steps.docs.outputs.url }}\` @ \`${{ steps.docs.outputs.branch }}\`
+          - Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - Rollback: revert the merge commit or reset \`docs\` back to \`${OLD:0:7}\`.
+          EOF
+
+          title="chore(docs): bump docs submodule to ${NEW:0:7}"
+          existing="$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh pr comment "$existing" --body "Pointer updated to \`${NEW:0:7}\`."
+          else
+            gh pr create --head "$BRANCH" \
+              --base "${{ github.event.repository.default_branch }}" \
+              --title "$title" --body-file /tmp/pr-body.md
+          fi
+
+          for _ in $(seq 1 12); do
+            mergeable="$(gh pr view "$BRANCH" --json mergeable --jq '.mergeable')"
+            [ "$mergeable" = "UNKNOWN" ] || break
+            sleep 5
+          done
+
+          if gh pr merge "$BRANCH" --squash --auto --delete-branch; then
+            exit 0
+          fi
+          echo "::warning::auto-merge unavailable, merging directly"
+          if gh pr merge "$BRANCH" --squash --delete-branch; then
+            exit 0
+          fi
+          echo "::warning::merge blocked (branch protection or pending checks); PR is open for manual merge"
