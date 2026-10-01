@@ -66,7 +66,7 @@ jobs:
 
           git checkout -B "$BRANCH"
           git add docs
-          git commit -m "chore(docs): bump submodule to ${NEW:0:7}"
+          git commit -m "bump submodule to ${NEW:0:7}"
           git push --force origin "HEAD:refs/heads/$BRANCH"
 
           cat > /tmp/pr-body.md <<EOF
