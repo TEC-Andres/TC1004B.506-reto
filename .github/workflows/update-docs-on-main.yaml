@@ -66,7 +66,7 @@ jobs:
 
           git checkout -B "$BRANCH"
           git add docs
-          git commit -m "bump submodule to ${NEW:0:7}"
+          git commit -m "bump docs submodule to ${NEW:0:7}"
           git push --force origin "HEAD:refs/heads/$BRANCH"
 
           cat > /tmp/pr-body.md <<EOF
@@ -77,7 +77,7 @@ jobs:
           - Rollback: revert the merge commit or reset \`docs\` back to \`${OLD:0:7}\`.
           EOF
 
-          title="chore(docs): bump docs submodule to ${NEW:0:7}"
+          title="bump docs submodule to ${NEW:0:7}"
           existing="$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
           if [ -n "$existing" ]; then
             gh pr comment "$existing" --body "Pointer updated to \`${NEW:0:7}\`."
