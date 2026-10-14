@@ -1,22 +1,23 @@
-/*
-#   Activity 1.4 - Search Algorithms
-#   Andrés Rodríguez Cantú 
-#   
-#   Copyright (C) Tecnólogico de Monterrey
-#   
-#   File: platformio.ini
-#   
-#   Created:                   22/09/2026
-#   Last Modified:             22/09/2026
-*/
 #include <Arduino.h>
+
+#include "RfidDoor.h"
+
+static const uint8_t SS_PIN = D8;
+static const uint8_t RST_PIN = D2;
+static const uint8_t SERVO_PIN = D3;
+
+RfidDoor door(SS_PIN, RST_PIN, SERVO_PIN);
 
 void setup() {
     Serial.begin(115200);
-    delay(5000);
-    Serial.println("Hello, World!");
+    delay(2000);
+
+    door.begin();
+    door.addCard(0xED, 0x5A, 0x19, 0x06, "Tarjeta A");
+    door.addCard(0xAB, 0x3C, 0x5B, 0x06, "Tarjeta B");
+    door.addCard(0x0A, 0x2D, 0xF9, 0x05, "Tarjeta C");
 }
 
 void loop() {
-    // Your code here
+    door.update();
 }
