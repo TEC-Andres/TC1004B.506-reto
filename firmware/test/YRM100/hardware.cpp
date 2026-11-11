@@ -1,23 +1,25 @@
-// Prueba 2: lee el tag directo del YRM100 conectado al NodeMCU
-// YRM100 TXD -> RX, RXD -> TX, EN -> 3V3. Desconecta RX al subir el código.
+// YRM100 TXD -> D6 (RX), RXD -> D5 (TX), EN -> 3V3, GND común.
+// El YRM100 usa SoftwareSerial; Serial (USB, 74880) queda libre para depuración.
 #include <Arduino.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+#include <SoftwareSerial.h>
 
 #include "YRM100.h"
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-YRM100 yrm(Serial);
+constexpr uint32_t YRM_BAUD  = 74880;
+constexpr uint32_t NODE_BAUD = 115200;
 
-constexpr uint8_t PINSDA = D2;
-constexpr uint8_t PINSCL = D1;
+// YRM 
+constexpr uint8_t PINRX = D6; // TX
+constexpr uint8_t PINTX = D5; // RX
+
+SoftwareSerial yrmSerial(PINRX, PINTX);
+YRM100 yrm(yrmSerial);
 
 void setup() {
-    Serial.begin(115200);
-    Wire.begin(PINSDA, PINSCL);
-    lcd.init();
-    lcd.backlight();
-    lcd.print(yrm.begin() ? "YRM100 listo" : "YRM100 no responde");
+    Serial.begin(YRM_BAUD); // igual que el log de arranque del ESP8266
+    yrmSerial.begin(NODE_BAUD);
+
+    Serial.println(yrm.begin() ? "YRM100 listo" : "YRM100 no responde");
 
     yrm.startContinuousRead();
 }
@@ -25,11 +27,9 @@ void setup() {
 void loop() {
     YRM100::Tag tag;
     if(yrm.poll(tag)) {
-        String epc = tag.epcHex();
-        lcd.clear();
-        lcd.print(epc.substring(max(0, (int)epc.length() - 16)));
-        lcd.setCursor(0, 1);
-        lcd.print("RSSI: ");
-        lcd.print(tag.rssi);
+        Serial.print("EPC: ");
+        Serial.print(tag.epcHex());
+        Serial.print(" RSSI: ");
+        Serial.println(tag.rssi);
     }
 }
