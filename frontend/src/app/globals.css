@@ -1,26 +1,47 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+  ToolNest design tokens. Components use these names (bg-brand-600, text-ink, ...)
+  instead of raw colors, so a re-brand is a change in this block only.
+  brand-600 on white = 5.2:1 and ink-muted on white = 6.5:1 (WCAG AA for body text).
+*/
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-brand-50: #fff4ec;
+  --color-brand-100: #ffe3cc;
+  --color-brand-500: #e65100;
+  --color-brand-600: #c2410c;
+  --color-brand-700: #9a3412;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-canvas: #f4f5f7; /* page background */
+  --color-surface: #ffffff; /* cards */
+  --color-line: #e3e6ea; /* borders, dividers */
+  --color-ink: #1f2933; /* primary text */
+  --color-ink-muted: #52606d; /* secondary text */
+  --color-ink-faint: #7b8794; /* timestamps, hints (large/bold or non-essential only) */
+  --color-sidebar: #1f2933;
+
+  --color-ok: #1f7a4d;
+  --color-ok-bg: #e3f5ea;
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fff4d6;
+  --color-bad: #b42318;
+  --color-bad-bg: #fde8e7;
+  --color-info: #1d5fa8;
+  --color-info-bg: #e3effc;
+
+  --radius-card: 6px;
+  --shadow-card: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
 }

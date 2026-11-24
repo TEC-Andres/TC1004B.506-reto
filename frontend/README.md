@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ToolNest — frontend
 
-## Getting Started
-
-First, run the development server:
+Dashboard (Next.js 16 + Tailwind 4) for the ToolNest smart boxes: what is inside each box,
+who opened it, sensor readings and the AI assistant.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm test         # derive.ts tests (node --test, Node >= 23)
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Without a backend the app shows **demo data** (`src/lib/mock.ts`) and a yellow banner.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Pages
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Route | Shows |
+| --- | --- |
+| `/` | KPIs, box cards, tools outside their box, latest activity |
+| `/cajas`, `/cajas/[id]` | Boxes; per box: contents, access attempts, controller, sensors (with trend), actuators, permissions |
+| `/herramientas` | Tool catalog with search/filters; detail with movement history and who took it |
+| `/usuarios` | Users with RFID cards, box permissions, tools in their custody, recent accesses |
+| `/actividad` | Accesos + EventosInventario + EventosActuadores + Historial in one filterable feed |
+| `/asistente` | ConsultasIA history and a question box |
 
-## Learn More
+## Code map
 
-To learn more about Next.js, take a look at the following resources:
+- `src/lib/types.ts` — one type per database table, same column names.
+- `src/lib/api.ts` — endpoint per table; loads all of them at once.
+- `src/lib/derive.ts` — pure logic: box of a sensor, tool state, custodian, activity feed.
+- `src/components/DataProvider.tsx` — fetches every 30 s, exposes `useData()`.
+- `src/components/ui.tsx` — Card, Badge, Stat, inputs, icons. Colors come from tokens in `src/app/globals.css`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Backend contract
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`/api/*` is proxied to `BACKEND_URL` (default `http://localhost:3001`, see `next.config.ts`).
+Each table is a `GET` that returns a JSON array of rows using the column names in `types.ts`:
 
-## Deploy on Vercel
+| Endpoint | Table |
+| --- | --- |
+| `GET /objetos` | Objeto |
+| `GET /usuarios` | Usuario — **never include `hashContrasena`** |
+| `GET /equipos` | Equipo |
+| `GET /cajas` | Caja |
+| `GET /rfid` | RFID |
+| `GET /controladores` | Controladores |
+| `GET /sensores` | Sensores |
+| `GET /actuadores` | Actuadores |
+| `GET /etiquetas-herramienta` | EtiquetasHerramienta |
+| `GET /permisos-acceso` | PermisosAcceso |
+| `GET /lecturas-sensores` | LecturasSensores |
+| `GET /eventos-inventario` | EventosInventario |
+| `GET /accesos` | Accesos |
+| `GET /eventos-actuadores` | EventosActuadores |
+| `GET /historial` | Historial |
+| `GET /consultas-ia` | ConsultasIA |
+| `POST /consultas-ia` `{ "pregunta": string }` | returns the saved ConsultaIA row |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Value conventions:
+- Dates as ISO 8601 strings.
+- `estatus`, `estaBloqueada`, `tieneLucesEncendidas`, `estaActivaProtocoloDeAlarma`, `tienePermiso` as JSON booleans (MySQL `TINYINT` → `true/false`).
+- `EventosInventario.tipoEvento`: `"deteccion" | "entrada" | "salida"`.
+- `Accesos.resultado`: `"autorizado" | "denegado"`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If any endpoint fails the whole app falls back to demo data, so mixed live/demo rows never appear.
+
+"Retirada por" is inferred: the last authorized access to the same box up to 15 minutes before the
+tool's `salida` event (`CUSTODIO_VENTANA_MS` in `derive.ts`). The schema does not store it directly.
